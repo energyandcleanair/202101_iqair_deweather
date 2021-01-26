@@ -23,12 +23,12 @@ if(!file.exists(f)){
 
   # There was very little difference between lag of one or two days
   # although a bit more so in China (lag2<lag1)
-  lags <- c(2)
+  lags <- c(0,1,2)
 
   meas.dews <- lapply(lags, function(lag){
     deweather(meas=meas.clean,
               poll="pm25",
-              output=c("anomaly","trend"),
+              output=c("trend"),
               add_pbl=T,
               upload_results=F,
               training_end_anomaly = "2019-12-31",
