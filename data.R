@@ -8,6 +8,8 @@ data.meas <- function(){
 
   # Get cities and location
   if(!file.exists(f.cities)){
+    library(tmap)
+    library(lutz)
     cities <- readxl::read_xlsx("data/cities.xlsx", skip = 2)
     cities$address <- paste(cities$City, cities$Country, sep=", ")
     coords <- tmaptools::geocode_OSM(cities$address)
@@ -33,4 +35,29 @@ data.meas <- function(){
   return(meas)
 
 
+}
+
+data.clean_meas <- function(meas){
+
+  # Removing peaks in Los Angeles, Melbourne, probably corresponding to wildfires
+  # cut_levels <- tibble(
+  #   location_id=c("Los Angeles", "Melbourne", "Tel Aviv-Yafo", "Singapore", "Kano", "Dubai", "Bogota", "Buenos Aires", "Bangkok"),
+  #   cut_level=c(40, 75, 150, 40, 500, 200, 100,100,150),
+  #   cut_date_from=c("2020-01-01", "2019-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01")
+  # )
+  cut_levels <- tibble(
+    location_id=c("Melbourne", "Tel Aviv-Yafo", "Singapore", "Kano", "Dubai", "Bogota", "Buenos Aires", "Bangkok"),
+    cut_level=c(75, 150, 60, 500, 200, 100, 100, 150),
+    cut_date_from=c("2019-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01", "2017-01-01"),
+    cut_date_to="2019-12-31"
+  )
+
+  meas %>%
+    left_join(cut_levels) %>%
+    filter(
+      is.na(cut_level) |
+        (date < as.POSIXct(cut_date_from)) |
+        (date > as.POSIXct(cut_date_to)) |
+        (value<cut_level)
+    )
 }
