@@ -51,12 +51,9 @@ change <- utils.table_change(meas.clean, meas.dew) %>%
   filter(!location_id %in% c("Kano", "Krasnoyarsk"))
 write_csv(change, file.path("results","data","change.csv"))
 
-
 # Plot changes
 plot.change(change, c("anomaly","trend","observed"))
-plot.change(change, c("trend","anomaly","observed"))
-
-
+plot.change(change, c("trend","observed"))
 
 # Plot observed vs counterfactual
 ggplot(meas.dew %>%

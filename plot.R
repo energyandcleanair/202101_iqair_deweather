@@ -1,7 +1,8 @@
 plot.change <- function(change, method_levels= c("anomaly","trend","observed")){
   change.plot <- change %>% tidyr::pivot_longer(names_to="type", names_prefix = "change_str_", values_to="value",
                                                 c(change_str_trend, change_str_anomaly, change_str_observed)) %>%
-    mutate(value=readr::parse_number(value, na = c("", "NA", "NANA"))/100)
+    mutate(value=readr::parse_number(value, na = c("", "NA", "NANA"))/100) %>%
+    filter(type %in% method_levels)
 
   change.plot$location_id <- factor(change.plot$location_id,
                                     levels(reorder(change.plot[change.plot$type==method_levels[1],]$location_id,

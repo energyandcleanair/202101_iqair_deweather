@@ -1,5 +1,8 @@
 utils.table_change <- function(meas, meas.dew){
 
+  meas <- meas %>%
+    filter(!is.na(value))
+
   (changes.observed <- meas %>%
      filter(lubridate::year(date) %in% c(2019,2020)) %>%
      group_by(location_id, poll, year=lubridate::year(date)) %>%
@@ -36,6 +39,6 @@ utils.table_change <- function(meas, meas.dew){
     changes.anomaly %>% select(location_id, poll, change, change_str) %>% mutate(method="anomaly"),
     changes.trend %>% select(location_id, poll, change, change_str) %>% mutate(method="trend")
   ) %>% tidyr::pivot_wider(names_from="method", values_from = c(change, change_str)) %>%
-    arrange(change_anomaly) %>%
+    arrange(change_trend) %>%
     select(change_str_anomaly, change_str_trend, change_str_observed)
 }
