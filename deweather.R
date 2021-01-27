@@ -12,10 +12,10 @@ dir.create("results/plots", showWarnings = F, recursive = T)
 
 meas <- data.meas()
 ggplot(meas) +geom_line(aes(date,value)) + facet_wrap(~location_id, scales="free_y") + rcrea::theme_crea()
-#
-#
+
 # meas.clean <- meas %>% data.clean_meas()
 # ggplot(meas.clean) +geom_line(aes(date,value)) + facet_wrap(~location_id, scales="free_y") + rcrea::theme_crea()
+meas.clean <- meas
 
 f <- file.path("results","data", "meas_dew.RDS")
 
@@ -26,7 +26,7 @@ if(!file.exists(f)){
   lags <- c(0)
 
   meas.dews <- lapply(lags, function(lag){
-    deweather(meas=meas,
+    deweather(meas=meas.clean,
               poll="pm25",
               output=c("trend"),
               add_pbl=T,
