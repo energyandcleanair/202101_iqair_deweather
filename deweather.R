@@ -12,10 +12,10 @@ dir.create("results/plots", showWarnings = F, recursive = T)
 
 meas <- data.meas()
 ggplot(meas) +geom_line(aes(date,value)) + facet_wrap(~location_id, scales="free_y") + rcrea::theme_crea()
-
-
-meas.clean <- meas %>% data.clean_meas()
-ggplot(meas.clean) +geom_line(aes(date,value)) + facet_wrap(~location_id, scales="free_y") + rcrea::theme_crea()
+#
+#
+# meas.clean <- meas %>% data.clean_meas()
+# ggplot(meas.clean) +geom_line(aes(date,value)) + facet_wrap(~location_id, scales="free_y") + rcrea::theme_crea()
 
 f <- file.path("results","data", "meas_dew.RDS")
 
@@ -23,15 +23,15 @@ if(!file.exists(f)){
 
   # There was very little difference between lag of one or two days
   # although a bit more so in China (lag2<lag1)
-  lags <- c(0,1,2)
+  lags <- c(0)
 
   meas.dews <- lapply(lags, function(lag){
-    deweather(meas=meas.clean,
+    deweather(meas=meas,
               poll="pm25",
               output=c("trend"),
               add_pbl=T,
               upload_results=F,
-              training_end_anomaly = "2019-12-31",
+              # training_end_anomaly = "2019-12-31",
               lag=lag
     ) %>%
       mutate(lag=!!lag)
@@ -46,14 +46,16 @@ if(!file.exists(f)){
   meas.dew <- readRDS(f)
 }
 
-meas.dew <- meas.dew %>% filter(lag==2)
+meas.dew <- meas.dew %>% filter(lag==0)
+
 change <- utils.table_change(meas.clean, meas.dew) %>%
   filter(!location_id %in% c("Kano", "Krasnoyarsk"))
 write_csv(change, file.path("results","data","change.csv"))
 
 # Plot changes
-plot.change(change, c("anomaly","trend","observed"))
+# plot.change(change, c("anomaly","trend","observed"))
 plot.change(change, c("trend","observed"))
+plot.change(change, c("trend"))
 
 # Plot observed vs counterfactual
 ggplot(meas.dew %>%
@@ -111,17 +113,27 @@ ggsave(file.path("results/plots/anomaly.png"), width=14, height=12)
 
 
 # Plot ts
-ggplot(meas.dew %>%
-         filter(output=="trend") %>%
-         unnest(normalised) %>%
-         left_join(change %>% select(location_id, change_str_trend)) %>%
-         mutate(location_id=paste0(location_id," [",change_str_trend,"]")) %>%
-         rcrea::utils.running_average(30)
-) +
+plot.data <- meas.dew %>%
+  filter(output=="trend") %>%
+  unnest(normalised) %>%
+  left_join(change %>% select(location_id, change_trend_str_lag0)) %>%
+  mutate(location_id=paste0(location_id," [",change_trend_str_lag0,"]")) %>%
+  rcrea::utils.running_average(30)
+
+ggplot(plot.data) +
+  geom_rect(data=tibble(location_id=unique(plot.data[["location_id"]]),
+                        xmin=lubridate::date("2020-01-01"),
+                        xmax=lubridate::date("2020-12-31"),
+                        ymin=-Inf,
+                        ymax=Inf),
+            aes(xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax),
+            fill="orange",
+            alpha=0.3) +
   geom_line(aes(date, value)) +
   facet_wrap(~location_id, scales="free_y") +
   theme_light() +
   rcrea::theme_crea() +
+  theme(panel.grid.major.x = element_line("grey95")) +
   ylim(0, NA) +
   labs(subtitle="Deweathered trend",
        y="PM2.5 [µg/m3]",
