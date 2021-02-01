@@ -44,32 +44,44 @@ if(!file.exists(f)){
   meas.dew <- readRDS(f)
 }
 
-f.fire <- file.path("results","data", "meas_dew_fire.RDS")
+#f.fire.circular <- file.path("results","data", "meas_dew_fire_circular.RDS")
+#if(!file.exists(f.fire.circular)){
+#  lag <- 0
+#  meas.dew.fire.circular <-  deweather(meas=meas.clean %>% filter(date>="2017-01-01"), #prevent loading 2016 data, saves a bit of time
+#              poll="pm25",
+#              output=c("trend"),
+#              add_pbl=T,
+#              upload_results=F,
+#              add_fire=T,
+#	            fire_mode="circular",
+#	            save_weather_filename="results/data/weather_fire_circular.RDS",
+#              lag=lag
+#    ) %>%
+#      mutate(lag=!!lag)
+#  saveRDS(meas.dew.fire.circular, f.fire.circular)
+#
+#}else{
+#  meas.dew.fire.circular <- readRDS(f.fire.circular)
+#}
 
-if(!file.exists(f.fire)){
-  # There was very little difference between lag of one or two days
-  # although a bit more so in China (lag2<lag1)
-  lags <- c(0)
-  meas.dews <- lapply(lags, function(lag){
-    deweather(meas=meas.clean,
-              poll="pm25",
-              output=c("trend"),
-              add_pbl=T,
-              upload_results=F,
-              add_fire=T,
-              # training_end_anomaly = "2019-12-31",
-              lag=lag
-    ) %>%
-      mutate(lag=!!lag)
-  })
-
-  meas.dew.fire <- do.call("bind_rows",
-                      meas.dews)
-
-  saveRDS(meas.dew.fire, f.fire)
+f.fire.oriented <- file.path("results","data", "meas_dew_fire_oriented.RDS")
+if(!file.exists(f.fire.oriented)){
+  lag <- 0
+  meas.dew.fire.oriented <-  deweather(meas=meas.clean %>% filter(date>="2017-01-01"), #prevent loading 2016 data, saves a bit of time
+                                       poll="pm25",
+                                       output=c("trend"),
+                                       add_pbl=T,
+                                       upload_results=F,
+                                       add_fire=T,
+                                       fire_mode="oriented",
+                                       save_weather_filename="results/data/weather_fire_oriented.RDS",
+                                       lag=lag
+  ) %>%
+    mutate(lag=!!lag)
+  saveRDS(meas.dew.fire.oriented, f.fire.oriented)
 
 }else{
-  meas.dew.fire <- readRDS(f.fire)
+  meas.dew.fire.oriented <- readRDS(f.fire.oriented)
 }
 
 
