@@ -1,3 +1,6 @@
+library(remotes)
+remotes::install_github("energyandcleanair/creadeweather", upgrade="never")
+
 library(creadeweather)
 library(tidyverse)
 
@@ -57,6 +60,7 @@ if(!file.exists(f.fire)){
               add_pbl=T,
               upload_results=F,
               add_fire=T,
+              save_weather_filename="results/data/weather_fire.RDS",
               # training_end_anomaly = "2019-12-31",
               lag=lag
     ) %>%
@@ -74,18 +78,17 @@ if(!file.exists(f.fire)){
 
 
 meas.dew <- meas.dew %>% filter(lag==0)
+meas.dew.fire <- meas.dew.fire %>% filter(lag==0)
 
-plot.trend(meas.dew, filename="trend.png")
-plot.trend(meas.dew.fire, filename="trend_fire.png")
+change <- utils.table_change(meas.clean, meas.dew)
+change.fire  <- utils.table_change(meas.clean, meas.dew.fire)
 
+plot.trend(meas.dew, change, filename="trend.png")
+plot.trend(meas.dew.fire, change.fire, filename="trend_fire.png")
 
-change <- utils.table_change(meas.clean, meas.dew) %>%
-  filter(!location_id %in% c("Kano", "Krasnoyarsk"))
 write_csv(change, file.path("results","data","change.csv"))
+write_csv(change.fire, file.path("results","data","change_fire.csv"))
 
-change.fire <- utils.table_change(meas.clean, meas.dew.fire) %>%
-  filter(!location_id %in% c("Kano", "Krasnoyarsk"))
-write_csv(change, file.path("results","data","change.csv"))
 
 # Plot changes
 # plot.change(change, c("anomaly","trend","observed"))
