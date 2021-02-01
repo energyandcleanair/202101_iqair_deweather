@@ -28,18 +28,18 @@ plot.change <- function(change, method_levels= c("trend","observed")){
 }
 
 
-plot.trend <- function(meas.dew, filename){
+plot.trend <- function(meas.dew, change, filename){
 
 
   # Plot ts
   plot.data <- meas.dew %>%
     filter(output=="trend") %>%
     unnest(normalised) %>%
-    left_join(change %>% select(location_id, change_trend_str_lag0)) %>%
-    mutate(location_id=paste0(location_id," [",change_trend_str_lag0,"]")) %>%
+    left_join(change %>% select(location_id, change_str_trend)) %>%
+    mutate(location_id=paste0(location_id," [",change_str_trend,"]")) %>%
     rcrea::utils.running_average(30)
 
-  ggplot(plot.data) +
+  (plt <- ggplot(plot.data) +
     geom_rect(data=tibble(location_id=unique(plot.data[["location_id"]]),
                           xmin=lubridate::date("2020-01-01"),
                           xmax=lubridate::date("2020-12-31"),
@@ -57,10 +57,11 @@ plot.trend <- function(meas.dew, filename){
     labs(subtitle="Deweathered trend",
          y="PM2.5 [µg/m3]",
          x=NULL,
-         caption="30-day running average.")
+         caption="30-day running average."))
 
   ggsave(file.path("results/plots",filename), width=14, height=12)
 
+  return(plt)
 }
 
 
@@ -123,4 +124,24 @@ plot.anomaly <- function(meas.dew){
          y=NULL,
          x=NULL)
   ggsave(file.path("results/plots/anomaly.png"), width=14, height=12)
+}
+
+plot.weather.fire <- function(weather.fire){
+
+  d.plot <- weather.fire %>%
+    select(station_id, meas_weather) %>%
+    tidyr::unnest(meas_weather)
+
+  ggplot(d.plot) +
+    geom_line(aes(date, fire_frp), col="darkred") +
+    facet_wrap(~station_id, scales="free_y") +
+    # scale_y_continuous(labels=scales::percent) +
+    theme_light() +
+    # geom_hline(yintercept = 0, col="grey30") +
+    scale_x_date(date_labels = "%Y") +
+    rcrea::theme_crea() +
+    labs(subtitle="Fire Radiative Potential where wind is blowing from",
+         y=NULL,
+         x=NULL)
+  ggsave(file.path("results/plots/weather_fire.png"), width=14, height=12)
 }

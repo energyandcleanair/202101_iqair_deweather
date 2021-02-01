@@ -20,60 +20,29 @@ ggplot(meas) +geom_line(aes(date,value)) + facet_wrap(~location_id, scales="free
 # ggplot(meas.clean) +geom_line(aes(date,value)) + facet_wrap(~location_id, scales="free_y") + rcrea::theme_crea()
 meas.clean <- meas
 
-f <- file.path("results","data", "meas_dew.RDS")
+meas.dew <- calc.deweather(meas.clean, fire_mode=NULL, use_cache=T)
+meas.dew.fire.circular <- calc.deweather(meas.clean, fire_mode="circular", use_cache=T)
+meas.dew.fire.oriented <- calc.deweather(meas.clean, fire_mode="oriented", use_cache=T)
 
-if(!file.exists(f)){
-  # There was very little difference between lag of one or two days
-  # although a bit more so in China (lag2<lag1)
-  lags <- c(0)
-  meas.dews <- lapply(lags, function(lag){
-    deweather(meas=meas.clean,
-              poll="pm25",
-              output=c("trend"),
-              add_pbl=T,
-              upload_results=F,
-              # training_end_anomaly = "2019-12-31",
-              lag=lag
-    ) %>%
-      mutate(lag=!!lag)
-  })
-
-  meas.dew <- do.call("bind_rows",
-                      meas.dews)
-
-  saveRDS(meas.dew, f)
+f.fire.oriented <- file.path("results","data", "meas_dew_fire_oriented.RDS")
+if(!file.exists(f.fire.oriented)){
+  lag <- 0
+  meas.dew.fire.oriented <-  deweather(meas=meas.clean %>% filter(date>="2017-01-01"), #prevent loading 2016 data, saves a bit of time
+                                       poll="pm25",
+                                       output=c("trend"),
+                                       add_pbl=T,
+                                       upload_results=F,
+                                       add_fire=T,
+                                       fire_mode="oriented",
+                                       save_weather_filename="results/data/weather_fire_oriented.RDS",
+                                       lag=lag
+  ) %>%
+    mutate(lag=!!lag)
+  saveRDS(meas.dew.fire.oriented, f.fire.oriented)
+>>>>>>> ece65942ef0727c9455240a17e1c3702323fae1e
 
 }else{
-  meas.dew <- readRDS(f)
-}
-
-f.fire <- file.path("results","data", "meas_dew_fire.RDS")
-
-if(!file.exists(f.fire)){
-  # There was very little difference between lag of one or two days
-  # although a bit more so in China (lag2<lag1)
-  lags <- c(0)
-  meas.dews <- lapply(lags, function(lag){
-    deweather(meas=meas.clean,
-              poll="pm25",
-              output=c("trend"),
-              add_pbl=T,
-              upload_results=F,
-              add_fire=T,
-              save_weather_filename="results/data/weather_fire.RDS",
-              # training_end_anomaly = "2019-12-31",
-              lag=lag
-    ) %>%
-      mutate(lag=!!lag)
-  })
-
-  meas.dew.fire <- do.call("bind_rows",
-                      meas.dews)
-
-  saveRDS(meas.dew.fire, f.fire)
-
-}else{
-  meas.dew.fire <- readRDS(f.fire)
+  meas.dew.fire.oriented <- readRDS(f.fire.oriented)
 }
 
 
