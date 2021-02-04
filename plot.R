@@ -1,3 +1,12 @@
+plot.meas <- function(meas){
+  plt <- ggplot(meas) +
+    geom_line(aes(date,value)) +
+    facet_wrap(~location_id, scales="free_y") +
+    rcrea::theme_crea()
+  ggsave("results/plots/meas.png", plt, width=12, height=10)
+  return(plt)
+}
+
 plot.change <- function(change, method_levels= c("trend","observed")){
   change.plot <- change %>% tidyr::pivot_longer(names_to="type", names_prefix = "change_str_", values_to="value",
                                                 c(change_str_trend, change_str_observed)) %>%

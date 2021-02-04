@@ -1,22 +1,26 @@
 #' Title
 #'
 #' @param mes
-#' @param fire_mode NULL for no accounting for fire, or `circular` or `oriented`
+#' @param fire_mode NULL for no accounting for fire, or 'circular', 'oriented', or 'trajectory'
 #'
 #' @return
 #' @export
 #'
 #' @examples
-calc.deweather <- function(mes, fire_mode, use_cache=T){
+calc.deweather <- function(mes, mode, fire_mode, use_cache=T){
 
   if(is.null(fire_mode)){
-    mode_str <- ""
+    fire_mode_str <- ""
   }else{
-    mode_str <- paste0("_fire_",fire_mode)
+    fire_mode_str <- paste0("_fire_",fire_mode)
   }
 
   f <- file.path("results","data",
-                 paste0("meas_dew",mode_str,".RDS"))
+                 paste0(c("meas.dew",
+                          mode,
+                          fire_mode_str,
+                          "RDS"),
+                        collapse="."))
 
   if(!use_cache | !file.exists(f)){
     # There was very little difference between lag of one or two days
@@ -25,13 +29,13 @@ calc.deweather <- function(mes, fire_mode, use_cache=T){
     meas.dews <- lapply(lags, function(lag){
       deweather(meas=meas.clean,
                 poll="pm25",
-                output=c("trend"),
+                output=mode,
                 add_pbl=T,
                 upload_results=F,
                 add_fire=!is.null(fire_mode),
                 fire_mode=fire_mode,
                 save_weather_filename=file.path("results","data",
-                                                paste0("weather_",mode_str,".RDS")),
+                                                paste0("weather_",mode,"_",fire_mode_str,".RDS")),
                 lag=lag
       ) %>%
         mutate(lag=!!lag)
