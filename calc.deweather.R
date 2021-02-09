@@ -10,9 +10,9 @@
 calc.deweather <- function(mes, mode, fire_mode, use_cache=T){
 
   if(is.null(fire_mode)){
-    fire_mode_str <- ""
+    fire_mode_str <- NULL
   }else{
-    fire_mode_str <- paste0("_fire_",fire_mode)
+    fire_mode_str <- paste0("fire.",fire_mode)
   }
 
   f <- file.path("results","data",
@@ -35,7 +35,7 @@ calc.deweather <- function(mes, mode, fire_mode, use_cache=T){
                 add_fire=!is.null(fire_mode),
                 fire_mode=fire_mode,
                 save_weather_filename=file.path("results","data",
-                                                paste0("weather_",mode,"_",fire_mode_str,".RDS")),
+                                                paste0(c("weather",mode,fire_mode_str,"RDS"), collapse=".")),
                 lag=lag
       ) %>%
         mutate(lag=!!lag)
@@ -49,6 +49,7 @@ calc.deweather <- function(mes, mode, fire_mode, use_cache=T){
   }else{
     meas.dew <- readRDS(f)
   }
-  return(meas.dew)
+  return(meas.dew %>%
+           left_join(data.countries(meas)))
 }
 

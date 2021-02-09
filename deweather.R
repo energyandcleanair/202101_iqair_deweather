@@ -1,5 +1,5 @@
-library(remotes)
-remotes::install_github("energyandcleanair/creadeweather", upgrade="never")
+# library(remotes)
+# remotes::install_github("energyandcleanair/creadeweather", upgrade="never")
 
 library(creadeweather)
 library(tidyverse)
@@ -14,35 +14,53 @@ readRenviron(".Renviron")
 dir.create("results/data", showWarnings = F, recursive = T)
 dir.create("results/plots", showWarnings = F, recursive = T)
 
+
+# Read data ---------------------------------------------------------------
+
+
 meas <- data.meas()
 plot.meas(meas)
 # meas.clean <- meas %>% data.clean_meas()
 meas.clean <- meas
 
 
-
-meas.dew.trend <- calc.deweather(meas.clean, mode="trend",fire_mode=NULL,  use_cache=T)
+meas.dew.trend <- calc.deweather(meas.clean, mode="trend", fire_mode=NULL,  use_cache=T)
 meas.dew.anomaly <- calc.deweather(meas.clean, mode="anomaly",fire_mode=NULL, use_cache=T)
-meas.dew.trend.fire.oriented <- calc.deweather(meas.clean, mode="trend",fire_mode="oriented", use_cache=T)
 meas.dew.trend.fire.trajectory <- calc.deweather(meas.clean, mode="trend", fire_mode="trajectory", use_cache=T)
 
 
-change.trend <- utils.table_change(meas.clean, meas.dew.trend)
-change.anomaly <- utils.table_change(meas.clean, meas.dew.anomaly)
-# change.fire  <- utils.table_change(meas.clean, meas.dew.fire)
-
-plot.trend(meas.dew, change, filename="trend.png")
-# plot.trend(meas.dew.fire, change.fire, filename="trend_fire.png")
-
-write_csv(change, file.path("results","data","change.csv"))
-# write_csv(change.fire, file.path("results","data","change_fire.csv"))
+change.trend <- utils.table_change(meas.clean, "trend", meas.dew.trend)
+change.anomaly <- utils.table_change(meas.clean, "anomaly", meas.dew.anomaly)
+change.trend.fire.trajectory  <- utils.table_change(meas.clean, "trend", meas.dew.trend.fire.trajectory)
 
 
-# Plot changes
-plot.change(change, c("trend","observed"))
-plot.change(change, c("trend"))
+weather.fire.circular <- readRDS("results/data/weather.trend.fire.circular.RDS")
+weather.fire.oriented <- readRDS("results/data/weather.trend.fire.oriented.RDS")
+weather.fire.trajectory <- readRDS("results/data/weather.trend.fire.trajectory.RDS")
 
 
-# Plot weather
-weather.fire <- readRDS("results/data/weather_fire_oriented.RDS")
-plot.weather.fire(weather.fire)
+
+# Tables ------------------------------------------------------------------
+write_csv(change.trend, file.path("results","data","change.trend.csv"))
+write_csv(change.anomaly, file.path("results","data","change.anomaly.csv"))
+write_csv(change.trend.fire.trajectory, file.path("results","data","change.trend.fire.trajectory.csv"))
+
+
+# Plots -------------------------------------------------------------------
+
+
+# Time series -------------------------------------------------------------
+plot.trend(meas.dew.trend, change.trend, filename="ts.trend.png")
+plot.trend(meas.dew.trend.fire.trajectory, change.trend.fire.trajectory, filename="ts.trend.fire.trajectory.png")
+plot.observed_vs_predicted(meas.dew.anomaly, change=change.anomaly, filename="ts.anomaly.full.png")
+plot.ts(meas.dew = meas.dew.anomaly, mode="anomaly")
+plot.ts(meas.dew = meas.dew.anomaly, mode="anomaly", weather.fire=weather.fire.trajectory, fire_mode="trajectory")
+plot.weather.fire(weather.fire.trajectory, fire_mode="trajectory", running_days=30)
+plot.weather.fire(weather.fire.oriented, fire_mode="oriented", running_days=30)
+plot.weather.fire(weather.fire.circular, fire_mode="circular", running_days=30)
+
+# Bar ---------------------------------------------------------------------
+plot.change(change.trend, modes=c("dew","observed"), filename="bar.trend.observed.png")
+plot.change(change.trend, modes=c("dew"), filename="bar.trend.png")
+plot.change(change.anomaly, modes=c("dew","observed"), filename="bar.anomaly.observed.png")
+plot.change(change.anomaly, modes=c("dew"), filename="bar.anomaly.png")

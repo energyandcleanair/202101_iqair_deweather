@@ -34,7 +34,14 @@ data.meas <- function(){
 
   return(meas)
 
+}
 
+data.countries <- function(meas){
+  meas %>%
+    distinct(location_id, country) %>%
+    mutate(country_name=country,
+           country=countrycode::countrycode(country, "country.name", "iso2c",
+                                            custom_match = c("Columbia"="CO")))
 }
 
 data.clean_meas <- function(meas){
