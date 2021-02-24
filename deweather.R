@@ -24,9 +24,10 @@ plot.meas(meas)
 meas.clean <- meas
 
 
-meas.dew.trend <- calc.deweather(meas.clean, mode="trend", fire_mode=NULL,  use_cache=T)
-meas.dew.anomaly <- calc.deweather(meas.clean, mode="anomaly",fire_mode=NULL, use_cache=T)
-meas.dew.trend.fire.trajectory <- calc.deweather(meas.clean, mode="trend", fire_mode="trajectory", use_cache=T)
+meas.dew.trend <- calc.deweather(meas.clean, mode="trend", lag=0, fire_mode=NULL,  use_cache=T)
+meas.dew.anomaly <- calc.deweather(meas.clean, mode="anomaly", lag=2, fire_mode=NULL, use_cache=T)
+meas.dew.trend.fire.trajectory <- calc.deweather(meas.clean, mode="trend", lag=0, fire_mode="trajectory", use_cache=T)
+meas.dew.anomaly.fire.trajectory <- calc.deweather(meas.clean, mode="anomaly", lag=2, fire_mode="trajectory", use_cache=T)
 
 
 change.trend <- utils.table_change(meas.clean, "trend", meas.dew.trend)
