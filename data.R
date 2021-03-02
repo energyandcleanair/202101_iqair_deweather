@@ -30,18 +30,13 @@ data.meas <- function(){
     mutate(process_id="day_station_mad",
            unit="µg/m3",
            source="airvisual"
-           )
-
-  return(meas)
-
-}
-
-data.countries <- function(meas){
-  meas %>%
-    distinct(location_id, country) %>%
+           ) %>%
     mutate(country_name=country,
            country=countrycode::countrycode(country, "country.name", "iso2c",
                                             custom_match = c("Columbia"="CO")))
+
+  return(meas)
+
 }
 
 data.clean_meas <- function(meas){
