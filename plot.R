@@ -201,7 +201,7 @@ plot.ts <- function(meas.dew,
     color_by <- NULL
   }else if(mode=="anomaly"){
     scales <- facet_scales
-    color_by <- "value"
+    color_by <- "poll"
     m <- meas.dew %>%
       filter(output=="anomaly_vs_counterfactual") %>%
       tidyr::unnest(normalised)
@@ -211,21 +211,32 @@ plot.ts <- function(meas.dew,
     mutate(location_name=location_id) %>%
     mutate(date=lubridate::date(date))
 
+#
+#
+#   plt <- rcrea::plot_recents(meas_raw=m,
+#                              running_days=running_days,
+#                              process_id="day_station_mad",
+#                              source="airvisual",
+#                              subfile_by="poll",
+#                              color_by=color_by,
+#                              subplot_by="location_name",
+#                              poll=poll,
+#                              date_from="2020-01-01"
+#   )
 
-  plt <- rcrea::plot_recents(meas_raw=m,
-                               running_days=running_days,
-                               process_id="day_station_mad",
-                               source="airvisual",
-                               subfile_by="poll",
-                               color_by=color_by,
-                             subplot_by="location_name",
-                             poll=poll,
-                             date_from="2020-01-01"
-    ) + facet_wrap(~location_name,
+  plt <- m %>% filter(process_id=="day_station_mad") %>%
+    rcrea::utils.running_average(30) %>%
+    ggplot(aes(date,value)) +
+    geom_line(aes(color="poll"), size=0.8) +
+    scale_x_date(limits=lubridate::date(c("2020-01-01","2021-01-01"))) +
+    rcrea::theme_crea() +
+    facet_wrap(~location_name,
                    scales=scales,
                    nrow=nrow,
                    ncol=ncol) +
-    scale_fill_manual(name=NULL, values=c(lockdown_colors))
+    scale_fill_manual(name=NULL, values=c(lockdown_colors), na.value="white") +
+    scale_colour_manual(name=NULL, labels="PM2.5 anomaly", values="darkblue") +
+    scale_y_continuous(labels=scales::percent_format(accuracy = 1))
 
 
     # We want to add lockdown stages behind curves
@@ -256,7 +267,8 @@ plot.ts <- function(meas.dew,
         summarise(value.max=max(value))
 
       # Try one max for all of them
-      d.fire.scale$value.max <- max(d.fire.scale$value.max)
+      fire_scale_max <- max(round(d.fire.scale$value.max/1E5 +1)) *1E5
+      d.fire.scale$value.max <- fire_scale_max
 
       d.fire <- weather.fire %>%
         filter(station_id %in% unique(meas.dew$location_id)) %>%
@@ -271,11 +283,17 @@ plot.ts <- function(meas.dew,
 
 
       plt <- plt - geom_bar(data=d.fire,
-                      aes(date, value.rel, fill="Fire radiative power"),
+                      aes(date, value.rel, fill="Fire activity"),
                       stat="identity",
                       color="transparent",
                       show.legend=add_legend) +
-        scale_fill_manual(name=NULL, values=c(fire_color,lockdown_colors)) +
+        scale_fill_manual(name=NULL, values=c(fire_color,lockdown_colors), na.value="white") +
+        scale_y_continuous(
+          labels=scales::percent_format(accuracy = 1),
+          name="PM2.5 anomaly",
+          sec.axis = sec_axis(trans=~.*fire_scale_max/1000,
+
+                              name="Fire activity [TW]")) +
         theme(legend.position = "bottom")
     }
 
@@ -293,7 +311,7 @@ plot.ts <- function(meas.dew,
         left_join(lockdown_stages, by=c("lockdown_region_id"="region_id")) %>%
         mutate(level=factor(level, levels=seq(1,3), labels=paste0("Lockdown (level ",seq(1,3),")")))
 
-      if(color_by=="year"){
+      if(!is.null(color_by) && color_by=="year"){
         l <- l %>% mutate(
           date_from='year<-'(date_from,0),
           date_to='year<-'(date_to,0))
@@ -323,7 +341,6 @@ plot.ts <- function(meas.dew,
                              max_date,
                              by="1 month"),
           date_labels = "%b") +
-        scale_y_continuous(labels=scales::percent_format(accuracy = 1)) +
         theme(panel.grid.minor = element_line("grey95"),
               panel.grid.major.x = element_line("grey90"),
               legend.position = "bottom") +
@@ -333,15 +350,21 @@ plot.ts <- function(meas.dew,
     }
 
     plt2  <- plt2 + if(add_labs){
-      labs(caption=paste0(
+      labs(
+        x=NULL,
+        y=NULL,
+        caption=paste0(
         "Source: CREA based on AirVisual, Oxford COVID-19 Government Response Tracker",
+        "\nThe line represents the PM2.5 anomaly i.e. the difference between observed an predicted PM2.5 level based on previous years air quality and weather data (2017-2019). It is smoothed using a 30-day running average.",
         ifelse(!is.null(weather.fire), ", MODIS and HYSPLIT.","."),
-        "\nLockdown is defined as periods when people are required not to leave house.",
-        ifelse(!is.null(weather.fire),"\nFire radiative power refers to the sum of fires' radiative power along air trajectories leading to each city.",
+        "\nLockdown is defined as periods when people are required not to leave house (1: recommended; 2: curfew; 3: total confinement).",
+        ifelse(!is.null(weather.fire),"\nFire activity refers to the sum of fire radiative power along air trajectories leading to each city.",
                "")))
     }else{
       labs(title=NULL,subtitle=NULL,caption=NULL)
     }
+
+    plt2 <- plt2 + guides(color = guide_legend(override.aes = list(fill = "white")))
 
     fire_str <- if(is.null(weather.fire)) NULL else "fire"
     if(is.null(basename)) basename <-  paste0(c("ts", mode, fire_mode, fire_str), collapse=".")
