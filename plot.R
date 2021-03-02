@@ -182,17 +182,25 @@ plot.ts <- function(meas.dew,
                     weather.fire=NULL,
                     running_days=30,
                     folder=dir_results_plots,
+                    basename=NULL,
+                    facet_scales=NULL,
                     width=15, height=15,
+                    add_labs=T,
+                    add_legend=T,
                     nrow=NULL, ncol=NULL, ...){
+
+  lockdown_colors <- c("#ffa50020","#ffa50040","#ffa50080")
+  fire_color <- "red"
+
 
   poll <- "pm25"
   if(mode=="trend"){
     m <- meas.dew %>%
       tidyr::unnest(normalised)
-    scales <- "free_y"
+    scales <- if(is.null(facet_scales)) "free_y" else facet_scales
     color_by <- NULL
   }else if(mode=="anomaly"){
-    scales <- NULL
+    scales <- facet_scales
     color_by <- "value"
     m <- meas.dew %>%
       filter(output=="anomaly_vs_counterfactual") %>%
@@ -217,7 +225,7 @@ plot.ts <- function(meas.dew,
                    scales=scales,
                    nrow=nrow,
                    ncol=ncol) +
-    scale_fill_manual(name=NULL, values=c("orange"))
+    scale_fill_manual(name=NULL, values=c(lockdown_colors))
 
 
     # We want to add lockdown stages behind curves
@@ -237,6 +245,7 @@ plot.ts <- function(meas.dew,
     if(!is.null(weather.fire)){
 
       d.fire.scale <- weather.fire %>%
+        filter(station_id %in% unique(meas.dew$location_id)) %>%
         select(station_id, meas_weather) %>%
         tidyr::unnest(meas_weather) %>%
         filter(lubridate::year(date) %in% seq(2019,2020)) %>%
@@ -246,7 +255,11 @@ plot.ts <- function(meas.dew,
         summarise(value=sum(fire_frp)) %>%
         summarise(value.max=max(value))
 
+      # Try one max for all of them
+      d.fire.scale$value.max <- max(d.fire.scale$value.max)
+
       d.fire <- weather.fire %>%
+        filter(station_id %in% unique(meas.dew$location_id)) %>%
         select(station_id, meas_weather) %>%
         tidyr::unnest(meas_weather) %>%
         filter(lubridate::year(date)==2020) %>%
@@ -260,69 +273,130 @@ plot.ts <- function(meas.dew,
       plt <- plt - geom_bar(data=d.fire,
                       aes(date, value.rel, fill="Fire radiative power"),
                       stat="identity",
-                      color="transparent") +
-        scale_fill_manual(name=NULL, values=c("grey70","orange")) +
+                      color="transparent",
+                      show.legend=add_legend) +
+        scale_fill_manual(name=NULL, values=c(fire_color,lockdown_colors)) +
         theme(legend.position = "bottom")
     }
 
-    # Adding lockdown stages
-    lockdown_stages <- rcrea::utils.lockdown_stages(unique(m$country))
+    m$lockdown_region_id <- utils.lockdown_regions(m)
 
-    l <- m %>%
-      distinct(location_name, country) %>%
-      left_join(lockdown_stages)
+    lockdown_stages <- rcrea::utils.lockdown_stages(unique(m$lockdown_region_id))
+    lockdown_stages <- lockdown_stages %>%
+      filter(date_from<="2020-12-31") %>%
+      mutate(date_to=pmin(as.POSIXct("2020-12-31"), date_to))
 
+    if(nrow(lockdown_stages)>0){
 
-    if(color_by=="year"){
-      l <- l %>% mutate(
-        date_from='year<-'(date_from,0),
-        date_to='year<-'(date_to,0))
-      min_date <- as.POSIXct("0000-01-01", tz="UTC")
-      max_date <- as.POSIXct("0001-01-01", tz="UTC")
+      l <- m %>%
+        distinct(location_name, lockdown_region_id) %>%
+        left_join(lockdown_stages, by=c("lockdown_region_id"="region_id")) %>%
+        mutate(level=factor(level, levels=seq(1,3), labels=paste0("Lockdown (level ",seq(1,3),")")))
+
+      if(color_by=="year"){
+        l <- l %>% mutate(
+          date_from='year<-'(date_from,0),
+          date_to='year<-'(date_to,0))
+        min_date <- as.POSIXct("0000-01-01", tz="UTC")
+        max_date <- as.POSIXct("0001-01-01", tz="UTC")
+      }else{
+        min_date <- lubridate::date(as.POSIXct("2020-01-01", tz="UTC"))
+        max_date <- lubridate::date(as.POSIXct("2021-01-01", tz="UTC"))
+      }
+
+      plt2 <- plt - geom_rect(data=l %>%
+                                filter(indicator=="lockdown", !is.na(date_from)),
+                              aes(xmin=lubridate::date(date_from),
+                                  xmax=lubridate::date(date_to),
+                                  ymin=-Inf,
+                                  ymax=+Inf,
+                                  fill=level),
+                              inherit.aes = F,
+                              show.legend=add_legend) +
+        scale_alpha_manual(values=c(0.1,0.2,0.3)) +
+        scale_x_date(
+          limits=c(min_date, max_date),
+          breaks = seq(min_date,
+                       max_date,
+                       by="3 months"),
+          minor_breaks = seq(min_date,
+                             max_date,
+                             by="1 month"),
+          date_labels = "%b") +
+        scale_y_continuous(labels=scales::percent_format(accuracy = 1)) +
+        theme(panel.grid.minor = element_line("grey95"),
+              panel.grid.major.x = element_line("grey90"),
+              legend.position = "bottom") +
+        guides(fill = guide_legend(nrow = 1))
     }else{
-      min_date <- lubridate::date(as.POSIXct("2020-01-01", tz="UTC"))
-      max_date <- lubridate::date(as.POSIXct("2021-01-01", tz="UTC"))
+      plt2 <- plt
     }
 
-    plt2 <- plt - geom_rect(data=l %>%
-                              filter(indicator=="lockdown", !is.na(date_from)),
-                            aes(xmin=lubridate::date(date_from),
-                                xmax=lubridate::date(date_to),
-                                ymin=-Inf,
-                                ymax=+Inf,
-                                fill=tools::toTitleCase(indicator)),
-                            inherit.aes = F,
-                            alpha=0.3) +
-      scale_x_date(
-        limits=c(min_date, max_date),
-        breaks = seq(min_date,
-                     max_date,
-                     by="3 month"),
-        minor_breaks = seq(min_date,
-                           max_date,
-                           by="1 month"),
-        date_labels = "%b") +
-      scale_y_continuous(labels=scales::percent) +
-      theme(panel.grid.minor = element_line("grey95"),
-            panel.grid.major = element_line("grey60"),
-            legend.position = "bottom") +
-      guides(fill = guide_legend(nrow = 1)) +
+    plt2  <- plt2 + if(add_labs){
       labs(caption=paste0(
-      "Source: CREA based on AirVisual, Oxford COVID-19 Government Response Tracker",
-      ifelse(!is.null(weather.fire), ", MODIS and HYSPLIT.","."),
-      "\nLockdown is defined as periods when people are required not to leave house (C6 >=2).",
-      ifelse(!is.null(weather.fire),"\nFire radiative power refers to the sum of weekly fires' radiative power along air trajectories leading to each city.",
-             "")))
+        "Source: CREA based on AirVisual, Oxford COVID-19 Government Response Tracker",
+        ifelse(!is.null(weather.fire), ", MODIS and HYSPLIT.","."),
+        "\nLockdown is defined as periods when people are required not to leave house.",
+        ifelse(!is.null(weather.fire),"\nFire radiative power refers to the sum of fires' radiative power along air trajectories leading to each city.",
+               "")))
+    }else{
+      labs(title=NULL,subtitle=NULL,caption=NULL)
+    }
 
-
-    print(plt2)
     fire_str <- if(is.null(weather.fire)) NULL else "fire"
-    ggsave(filename=file.path("results","plots",
-                              paste0(c("ts",mode,fire_mode,fire_str,
-                                       "png"),collapse=".")),
+    if(is.null(basename)) basename <-  paste0(c("ts", mode, fire_mode, fire_str), collapse=".")
+
+    ggsave(filename=file.path("results","plots",paste0(basename,".png")),
            plot=plt2,
            width=width,
            height=height)
+
+    ggsave(filename=file.path("results","plots",paste0(basename,".svg")),
+           plot=plt2,
+           width=width,
+           height=height)
+
+    return(plt2)
+}
+
+plot.change_lockdown <- function(change.lockdown){
+
+  chg_colors <- c("#35416C", "#8CC9D0", "darkgray", "#CC0000", "#990000")
+  maxabs <- 0.5
+  min_days <- 14
+
+  ggplot(change.lockdown %>%
+           filter(location_id != "Kano",
+                  n_days > min_days),
+         aes(x=level,
+             y=forcats::fct_rev(location_id))) +
+    geom_tile(aes(fill=pmax(pmin(change,0.5),-0.5))) +
+    geom_text(aes(label=change_str), color="white") +
+    scale_fill_gradientn(colors = chg_colors, guide = F, limits=c(-maxabs,maxabs)) +
+    labs(y=NULL,
+         x="Lockdown level") +
+    theme_light()
+
+  ggsave(file.path("results","plots","lockdown_impact.png"),
+         width=8, height = 6)
+
+  change.lockdown.simplified <- change.lockdown %>%
+    group_by(location_id, poll, lockdown=ifelse(level>=1,"Lockdown", "No lockdown")) %>%
+    summarise(change=weighted.mean(change, n_days))
+
+  ggplot(change.lockdown.simplified %>%
+           filter(location_id != "Kano"),
+         aes(x=fct_rev(lockdown),
+             y=forcats::fct_rev(location_id))) +
+    geom_tile(aes(fill=pmax(pmin(change,0.4),-0.4))) +
+    geom_text(aes(label=paste0(ifelse(change>0,"+",""), round(change*100),"%")), color="white") +
+    scale_fill_gradientn(colors = chg_colors, guide = F, limits=c(-maxabs,maxabs)) +
+    labs(y=NULL,
+         x=NULL) +
+    theme_light()
+
+  ggsave(file.path("results","plots","lockdown_impact_simplified.png"),
+         width=8, height = 6)
 }
 
 

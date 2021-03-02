@@ -24,15 +24,16 @@ plot.meas(meas)
 meas.clean <- meas
 
 
-meas.dew.trend <- calc.deweather(meas.clean, mode="trend", fire_mode=NULL,  use_cache=T)
-meas.dew.anomaly <- calc.deweather(meas.clean, mode="anomaly",fire_mode=NULL, use_cache=T)
-meas.dew.trend.fire.trajectory <- calc.deweather(meas.clean, mode="trend", fire_mode="trajectory", use_cache=T)
-meas.dew.anomaly.fire.trajectory <- calc.deweather(meas.clean, mode="anomaly", fire_mode="trajectory", use_cache=T)
+
+meas.dew.trend <- calc.deweather(meas.clean, mode="trend", lag=0, fire_mode=NULL,  use_cache=T)
+meas.dew.anomaly <- calc.deweather(meas.clean, mode="anomaly", lag=2, fire_mode=NULL, use_cache=T)
+meas.dew.trend.fire.trajectory <- calc.deweather(meas.clean, mode="trend", lag=0, fire_mode="trajectory", use_cache=T)
+meas.dew.anomaly.fire.trajectory <- calc.deweather(meas.clean, mode="anomaly", lag=2, fire_mode="trajectory", use_cache=T)
 
 
 change.trend <- utils.table_change(meas.clean, "trend", meas.dew.trend)
 change.anomaly <- utils.table_change(meas.clean, "anomaly", meas.dew.anomaly)
-change.anomaly.lockdown <- utils.table_change_lockdown(meas.clean, "anomaly", meas.dew.anomaly)
+change.anomaly.lockdown <- utils.table_change_lockdown("anomaly", meas.dew.anomaly)
 change.trend.fire.trajectory  <- utils.table_change(meas.clean, "trend", meas.dew.trend.fire.trajectory)
 
 
@@ -57,17 +58,44 @@ plot.trend(meas.dew.trend.fire.trajectory, change.trend.fire.trajectory, filenam
 plot.observed_vs_predicted(meas.dew.anomaly, change=change.anomaly, filename="ts.anomaly.full.png")
 
 plot.ts(meas.dew = meas.dew.anomaly, mode="anomaly")
+
 plot.ts(meas.dew = meas.dew.anomaly, mode="anomaly", weather.fire=weather.fire.trajectory, fire_mode="trajectory")
 
-cities_short <- c("Wuhan","Beijing","Singapore")
+cities_short <- c("Bangkok",
+                  "Delhi",
+                  "Johannesburg",
+                  "Kathmandu",
+                  "Los Angeles",
+                  "Paris")
+
 plot.ts(meas.dew = meas.dew.anomaly %>% filter(location_id %in% cities_short),
         mode="anomaly", weather.fire=weather.fire.trajectory, fire_mode="trajectory",
         ncol=1,
         height=10,
         width=8,
         facet_scales = "free_y",
-        filename="ts.anomaly.trajectory.fire.short.png")
+        basename="ts.anomaly.trajectory.fire.short")
 
+plot.ts(meas.dew = meas.dew.anomaly %>% filter(location_id %in% cities_short),
+        mode="anomaly", weather.fire=weather.fire.trajectory, fire_mode="trajectory",
+        ncol=1,
+        height=12,
+        width=8,
+        facet_scales = "free_y",
+        basename="ts.anomaly.trajectory.fire.short.nolabs")
+
+for(location_id in unique(meas.dew.anomaly$location_id)){
+  print(location_id)
+  plot.ts(meas.dew = meas.dew.anomaly %>% filter(location_id==!!location_id),
+          mode="anomaly", weather.fire=weather.fire.trajectory, fire_mode="trajectory",
+          ncol=1,
+          height=3,
+          width=8,
+          facet_scales = "free_y",
+          add_legend = F,
+          add_labs=F,
+          basename=paste0("/cities/ts.anomaly.trajectory.fire.short.nolabs.",tolower(location_id)))
+}
 
 plot.weather.fire(weather.fire.trajectory, fire_mode="trajectory", running_days=30)
 plot.weather.fire(weather.fire.oriented, fire_mode="oriented", running_days=30)
