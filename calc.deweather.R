@@ -7,7 +7,7 @@
 #' @export
 #'
 #' @examples
-calc.deweather <- function(mes, mode, fire_mode, lag, use_cache=T){
+calc.deweather <- function(m, mode, fire_mode, lag, use_cache=T){
 
   if(is.null(fire_mode)){
     fire_mode_str <- NULL
@@ -27,7 +27,7 @@ calc.deweather <- function(mes, mode, fire_mode, lag, use_cache=T){
     # There was very little difference between lag of one or two days
     # although a bit more so in China (lag2<lag1)
     meas.dew <- deweather(
-      meas=meas.clean,
+      meas=m,
       lag=lag,
       poll="pm25",
       output=mode,
