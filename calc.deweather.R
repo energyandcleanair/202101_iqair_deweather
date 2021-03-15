@@ -7,7 +7,7 @@
 #' @export
 #'
 #' @examples
-calc.deweather <- function(m, mode, fire_mode, lag, use_cache=T){
+calc.deweather <- function(m, mode, fire_mode, lag, use_cache=F){
 
   if(is.null(fire_mode)){
     fire_mode_str <- NULL
